@@ -5,6 +5,7 @@ const chalk = require('chalk');
 const rimraf = require('rimraf');
 const { readFileSync, writeFileSync } = require('fs');
 const { join } = require('path');
+// 替代Node.js提供的文件系统的watch模式
 const chokidar = require('chokidar');
 
 const nodeBabelConfig = {
@@ -60,6 +61,10 @@ function transform(opts = {}) {
   return babel.transform(content, config).code;
 }
 
+/**
+ * 构建过程：
+ * 使用vinyl-fs虚拟文件系统进行流式转换，读取源代码，转换源代码为目标代码，写入到目标文件夹下
+ */
 function build() {
   rimraf.sync(join(cwd, 'lib'));
   return vfs
@@ -78,6 +83,13 @@ function build() {
     .pipe(vfs.dest(`./lib/`));
 }
 
+/**
+ * 初始化，完成以下工作
+ * 1. 首次构建
+ * 2. 如果使用了watch模式，则对更新的文件重新转换源代码，生成目标代码，写入到目标文件中
+ *    因为构建过程是所有src下面的文件进行源代码转换并写入目标路径，而watch模式下只需要对
+ *    更新的文件进行转换写入过程
+ */
 function init() {
   const arg = process.argv[2];
   const isWatch = arg === '-w' || arg === '--watch';
